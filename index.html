@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="ikuji.css">
+    <title>育児活動の記録</title>
+</head>
+
+<body>
+
+    <h1 id="childHeader">育児アシスタント</h1>
+
+    <div class="form">
+    <!-- 子どもの名前を入力するフォーム -->
+    <label for="childName">子どもの名前:</label>
+    <input type="text" id="childName" name="childName" oninput="ChildnameWoHanei()">
+    
+    <!-- 子どもの生年月日を選択するフォーム -->
+    <select id="birthYear" name="birthYear"></select>年
+    <select id="birthMonth" name="birthMonth"></select>月
+    <select id="birthDay" name="birthDay"></select>日生まれ
+    </div>
+    
+    <div class="timeList">
+    <!-- 記録内容の選択ボタンを作成 -->
+    <!-- onclickは('')内のJSの関数を呼び出す属性 -->
+    <button onclick="recordTime('授乳した時間')">授乳した時間</button>
+    <button onclick="recordTime('寝た時間')">寝た時間</button>
+    <button onclick="recordTime('起きた時間')">起きた時間</button>
+    <button onclick="recordTime('うんちの時間')">うんちの時間</button>
+    
+    <!-- 記録をリスト化して表示 -->
+    <ul id="timeList"></ul>
+    </div>
+
+    <!-- リセットボタンを作成 -->
+    <button onclick="resetRecords()">リセット</button>
+
+    <script>
+        // 子供の名前を更新してヘッダーに反映
+        function ChildnameWoHanei() {
+            const childName = document.getElementById('childName').value;
+            document.getElementById('childHeader').textContent = `${childName}ママの育児アシスタント`;
+        }
+
+        // // 子供の年齢を更新してヘッダーに反映
+        // function ChildAgeWoHanei() {
+            // 挫折・・・
+
+
+        // 年の選択肢を生成
+        // for文を使って、2024年から2000年まで1年ずつ減らしていく 
+        for (let year = 2024; year >= 2000; year--) {
+            //createElementを使って、optionに選択肢を生成する
+            const option = document.createElement('option');
+            // optionの選択肢をドロップダウンにテキスト表示する
+            option.textContent = year;
+            // option.value = year; 不明
+            // ドロップダウンリストから選択できるようにする やや不明
+            document.getElementById('birthYear').appendChild(option);
+        }
+
+        // 月の選択肢を生成
+        for (let month = 1; month <= 12; month++) {
+            const option = document.createElement('option');
+            option.textContent = month;
+            option.value = month;
+            document.getElementById('birthMonth').appendChild(option);
+        }
+
+        // 日の選択肢を生成
+        for (let day = 1; day <= 31; day++) {
+            const option = document.createElement('option');
+            option.textContent = day;
+            option.value = day;
+            document.getElementById('birthDay').appendChild(option);
+        }
+
+
+        // ①行動を記録する
+        function recordTime(activity) {
+            //ユーザーに記録させるようにするにはpromptを使う
+            let timeInput = prompt(`${activity}を入力してください (例: 15:30)`);
+            if (timeInput) {
+                // 記録内容を生成する
+                const additionalText = getAdditionalText(activity, timeInput);
+                // 記録内容を画面に表示させる
+                addRecordToList(activity, timeInput, additionalText);
+                // 記録内容をlocalStorageに保存する
+                saveRecord(activity, timeInput, additionalText);
+            }
+        }
+
+        // ②活動後の次のアクションについて計算する
+        function calculateNextTime(time, minutesToAdd) {
+            const [hours, minutes] = time.split(':').map(num => parseInt(num, 10));
+            const currentTime = new Date();
+            currentTime.setHours(hours, minutes + minutesToAdd, 0); // 指定した分を加算
+
+            // 次の予定時刻を "HH:MM" 形式で返す
+            return currentTime.toTimeString().substring(0, 5);
+        }
+
+        // ③活動内容とその後のアクションをパターン分けして文章化する（if構文）
+        // getAdditionalTextでactivity(記録内容)、timeInput（記録時間）を呼び出す
+        function getAdditionalText(activity, timeInput) {
+            // まずは空白
+            let additionalText = '';
+            // 授乳した時間を記録したら、
+            if (activity === '授乳した時間') {
+                // その180m後を次の時間として定数を生成
+                const nextTime = calculateNextTime(timeInput, 180);
+                // その時間をテキストに起こす 
+                // この進化系はPythonイメージできるらしい
+                additionalText = `、次は${nextTime}にお腹が空く予定だよ`;
+            } else if (activity === '寝た時間') {
+                const wakeUpStart = calculateNextTime(timeInput, 30); 
+                const wakeUpEnd = calculateNextTime(timeInput, 90); 
+                additionalText = `、${wakeUpStart}〜${wakeUpEnd}の間に起きる予定だよ。その間に家事を済ませよう！`;
+            } else if (activity === '起きた時間') {
+                const sleepyTime = calculateNextTime(timeInput, 120); 
+                additionalText = `、次は${sleepyTime}に眠くなる予定だよ。寝かしつけの参考に！`;
+            } else if (activity === 'うんちの時間') {
+                additionalText = '、今日も快便やったね！';
+            }
+            return additionalText;
+        }
+
+        // ④③について、リスト化して表示する
+        function addRecordToList(activity, timeInput, additionalText) {
+            // HTML内のidがtimeListの部分（行動を表記する部分）を取得し、timeList変数にいれる
+            const timeList = document.getElementById('timeList');
+            // liにドキュメントを生成し
+            const li = document.createElement('li');
+            // $以降の内容を組み合わせたテキスト形式を作成する
+            li.textContent = `${activity}: ${timeInput} ${additionalText}`;
+            // 文字装飾のために追加
+            li.classList.add('additional-text'); 
+            // timeList部分に生成したliを表示させる
+            timeList.appendChild(li);
+        }
+
+        // ⑤localStorageに上記の内容を保存する
+        // アラート部分を保存するとlocalStorageにというところが上手くいっていないかも？
+        function saveRecord(activity, timeInput, additionalText) {
+            // recordに情報をオブジェクトとして取りまとめる
+            const record = { activity, time: timeInput, additionalText };
+            // activityRecordsというキーで保存しているデータをlocalStorageから取得して、currentRecordsという定数に変換する
+            const currentRecords = JSON.parse(localStorage.getItem('activityRecords')) || [];
+            // 取りまとめたrecordをcurrentRecordsに追加する
+            currentRecords.push(record);
+            // currentRecordsの文字列をactivityRecordsというキーでlocalStorageに保存する
+            localStorage.setItem('activityRecords', JSON.stringify(currentRecords));
+        }
+
+        // ⑤-a リセットするとlocalStorageから上記の内容が削除される
+        function resetRecords() {
+            // localStorageから、activityRecordsというキーの情報を削除する
+            localStorage.removeItem('activityRecords'); 
+            // HTML内のidがtimeListの部分（行動を表記する部分）を取得し、timeList変数にいれる
+            const timeList = document.getElementById('timeList');
+            // timeList変数に空欄をいれることで、画面上からテキストが消える
+            timeList.innerHTML = ''; 
+        }
+
+        // ⑤-b リロードしてもlocalStorage上の記録が表示されたままになるようにする        
+        function displayRecords() {
+            // activityRecordsキーをlocalStorageから取得して、storedRecordsに反映する
+            const storedRecords = JSON.parse(localStorage.getItem('activityRecords'));
+            // 取得したstoredRecordsを処理し、addRecordToList以下の内容を呼び出し、表示させる
+            storedRecords.forEach(record => {
+                addRecordToList(record.activity, record.time, record.additionalText);
+            });
+        }
+    </script>
+</body>
+
+</html>
